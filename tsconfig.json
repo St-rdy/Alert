@@ -1,27 +1,58 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "module": "commonjs",
-    "lib": ["ES2022"],
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "types": ["node", "jest"],
-    "sourceMap": true,
-    "removeComments": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true
+    "target": "ES2020", // 최신 JavaScript 문법 사용
+    "module": "commonjs", // Node.js 호환 모듈 시스템
+    "lib": ["ES2020"], // 사용할 라이브러리
+    "outDir": "./dist", // 컴파일된 파일 출력 위치
+    "rootDir": "./src", // 소스 파일 위치
+
+    "strict": true, // 모든 strict 옵션 활성화
+    "noImplicitAny": true, // any 타입 암시적 사용 금지
+    "strictNullChecks": true, // null/undefined 엄격 체크
+    "strictFunctionTypes": true, // 함수 타입 엄격 체크
+    "strictPropertyInitialization": true, // 클래스 속성 초기화 체크
+    "noImplicitThis": true, // this 타입 명시 필수
+    "alwaysStrict": true, // strict mode 코드 생성
+
+    "noUnusedLocals": true, // 사용하지 않는 지역 변수 경고
+    "noUnusedParameters": true, // 사용하지 않는 매개변수 경고
+    "noImplicitReturns": true, // 함수의 모든 경로에서 return 필수
+    "noFallthroughCasesInSwitch": true, // switch문 fallthrough 방지
+
+    "moduleResolution": "node", // Node.js 방식 모듈 해석
+    "baseUrl": "./", // 상대 경로 기준점
+    "paths": {
+      "@/*": ["src/*"], // @ 별칭 사용 (선택사항)
+      "@controllers/*": ["src/controllers/*"],
+      "@services/*": ["src/services/*"],
+      "@repositories/*": ["src/repositories/*"],
+      "@models/*": ["src/models/*"],
+      "@middlewares/*": ["src/middlewares/*"],
+      "@utils/*": ["src/utils/*"],
+      "@config/*": ["src/config/*"]
+    },
+    "esModuleInterop": true, // CommonJS/ES6 모듈 호환성
+    "allowSyntheticDefaultImports": true, // default import 허용
+    "resolveJsonModule": true, // JSON 파일 import 가능
+
+    "sourceMap": true, // 디버깅용 소스맵 생성
+    "declaration": true, // .d.ts 파일 생성
+    "declarationMap": true, // 선언 파일 소스맵
+
+    "experimentalDecorators": true, // 데코레이터 사용 (필요 시)
+    "emitDecoratorMetadata": true, // 데코레이터 메타데이터
+
+    "skipLibCheck": true, // .d.ts 파일 체크 스킵 (빌드 속도 향상)
+    "forceConsistentCasingInFileNames": true, // 파일명 대소문자 일관성
+    "types": ["node"] // 타입 정의 포함
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
+  "include": [
+    "src/**/*" // 컴파일할 파일
+  ],
+  "exclude": [
+    "node_modules", // 제외할 폴더
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ]
 }
