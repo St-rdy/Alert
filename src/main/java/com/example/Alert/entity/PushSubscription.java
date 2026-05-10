@@ -27,7 +27,6 @@ public class PushSubscription {
     @Column(nullable = false)
     private String auth;
 
-    @Builder.Default
     @Column(name = "is_active", nullable = false)
-    private boolean active = true;
+    private boolean active;
 }

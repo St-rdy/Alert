@@ -19,16 +19,13 @@ public class NotificationSetting {
     @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
 
-    @Builder.Default
     @Column(name = "push_enabled", nullable = false)
-    private boolean pushEnabled = true;
+    private boolean pushEnabled;
 
-    @Builder.Default
     @Column(name = "chat_enabled", nullable = false)
-    private boolean chatEnabled = true;
+    private boolean chatEnabled;
 
-    @Builder.Default
     @Column(name = "study_enabled", nullable = false)
-    private boolean studyEnabled = false;
+    private boolean studyEnabled;
 
 }

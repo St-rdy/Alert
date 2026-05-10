@@ -9,12 +9,12 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 
-@Entity // Entity임을 선언
-@Table(name = "notification") // DB 테이블 이름 매핑
-@Getter // lombok
-@Builder // lombok
-@NoArgsConstructor // 기본 생성자 자동 생성
-@AllArgsConstructor // 필드 생성자 자동 생성
+@Entity
+@Table(name = "notification")
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Notification {
 
     // 아이디
@@ -39,9 +39,8 @@ public class Notification {
     private String body;
 
     // 읽었는가
-    @Builder.Default // 기본값을 보장,
     @Column(name = "is_read", nullable = false)
-    private boolean read = false;
+    private boolean read;
 
     // 이동 url
     @Column
