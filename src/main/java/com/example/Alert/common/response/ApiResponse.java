@@ -19,7 +19,7 @@ public class ApiResponse<T> {
         return new ApiResponse<>(200, "SUCCESS", message, data);
     }
 
-    public static <T> ApiResponse<Void> error(int status, String code, String message) {
+    public static ApiResponse<Void> error(int status, String code, String message) {
         return new ApiResponse<>(status, code, message, null);
     }
 }
