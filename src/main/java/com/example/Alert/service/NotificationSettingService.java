@@ -37,9 +37,9 @@ public class NotificationSettingService {
         if (existing == null) {
             toSave = NotificationSetting.builder()
                     .userId(userId)
-                    .pushEnabled(request.getPushEnabled() != null ? request.getPushEnabled() : true)
-                    .chatEnabled(request.getChatEnabled() != null ? request.getChatEnabled() : true)
-                    .studyEnabled(request.getStudyEnabled() != null ? request.getStudyEnabled() : true)
+                    .pushEnabled(request.getPushEnabled() != null ? request.getPushEnabled() : false)
+                    .chatEnabled(request.getChatEnabled() != null ? request.getChatEnabled() : false)
+                    .studyEnabled(request.getStudyEnabled() != null ? request.getStudyEnabled() : false)
                     .build();
         } else {
             // 설정값이 있다면, 입력 받은 값으로 치환 UPDATE 대응
