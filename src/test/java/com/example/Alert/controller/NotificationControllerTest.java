@@ -2,7 +2,9 @@ package com.example.Alert.controller;
 
 import com.example.Alert.common.exception.AppException;
 import com.example.Alert.common.exception.ErrorCode;
+import com.example.Alert.dto.response.NotificationListResponse;
 import com.example.Alert.dto.response.NotificationResponse;
+import com.example.Alert.dto.response.PaginationResponse;
 import com.example.Alert.security.JwtAuthenticationFilter;
 import com.example.Alert.security.JwtProvider;
 import com.example.Alert.security.SecurityConfig;
@@ -22,11 +24,13 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -155,6 +159,59 @@ class NotificationControllerTest {
                             .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("INVALID_TYPE"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/notifications")
+    class GetNotifications {
+
+        @Test
+        @DisplayName("알림 목록을 반환한다 (200)")
+        void success() throws Exception {
+            NotificationListResponse mockList = NotificationListResponse.builder()
+                    .unreadCount(1L)
+                    .pagination(PaginationResponse.builder().page(1).limit(20).total(1L).build())
+                    .notifications(List.of(mockResponse))
+                    .build();
+
+            given(notificationService.getNotifications(42L, null, null, 1, 20)).willReturn(mockList);
+
+            mockMvc.perform(get("/api/v1/notifications")
+                            .with(authentication(mockAuth)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.unreadCount").value(1))
+                    .andExpect(jsonPath("$.data.pagination.page").value(1))
+                    .andExpect(jsonPath("$.data.pagination.total").value(1))
+                    .andExpect(jsonPath("$.data.notifications[0].type").value("chat"))
+                    .andExpect(jsonPath("$.data.notifications[0].read").value(false));
+        }
+
+        @Test
+        @DisplayName("type 필터로 조회한다 (200)")
+        void filterByType() throws Exception {
+            NotificationListResponse mockList = NotificationListResponse.builder()
+                    .unreadCount(1L)
+                    .pagination(PaginationResponse.builder().page(1).limit(20).total(1L).build())
+                    .notifications(List.of(mockResponse))
+                    .build();
+
+            given(notificationService.getNotifications(42L, "chat", null, 1, 20)).willReturn(mockList);
+
+            mockMvc.perform(get("/api/v1/notifications")
+                            .param("type", "chat")
+                            .with(authentication(mockAuth)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.notifications[0].type").value("chat"));
+        }
+
+        @Test
+        @DisplayName("토큰이 없으면 UNAUTHORIZED를 반환한다 (401)")
+        void noToken() throws Exception {
+            mockMvc.perform(get("/api/v1/notifications"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
         }
     }
 }
