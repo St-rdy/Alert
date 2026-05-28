@@ -36,3 +36,13 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+tasks.register('installGitHooks') {
+	group = 'setup'
+	description = 'Install git hooks from .githooks directory'
+	doLast {
+		exec { commandLine 'git', 'config', 'core.hooksPath', '.githooks' }
+		fileTree('.githooks').forEach { it.setExecutable(true) }
+		println 'Git hooks installed. (.githooks)'
+	}
+}
