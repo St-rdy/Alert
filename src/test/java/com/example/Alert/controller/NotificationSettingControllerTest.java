@@ -3,6 +3,8 @@ package com.example.Alert.controller;
 import com.example.Alert.common.exception.AppException;
 import com.example.Alert.common.exception.ErrorCode;
 import com.example.Alert.dto.response.NotificationSettingResponse;
+import com.example.Alert.security.JwtAuthenticationFilter;
+import com.example.Alert.security.JwtProvider;
 import com.example.Alert.security.SecurityConfig;
 import com.example.Alert.service.NotificationSettingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,26 +14,26 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Collections;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(NotificationSettingController.class)
-@Import(SecurityConfig.class)
-@TestPropertySource(properties = "jwt.secret=test-secret-key-must-be-32-chars!!")
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class NotificationSettingControllerTest {
 
     @Autowired
@@ -43,7 +45,16 @@ class NotificationSettingControllerTest {
     @MockitoBean
     private NotificationSettingService notificationSettingService;
 
+    // JwtProvider만 mock: jwt.secret 주입 없이도 컨텍스트 로드 가능
+    // 실제 필터(JwtAuthenticationFilter)는 그대로 동작하므로 필터 체인이 정상 실행됨
+    @MockitoBean
+    private JwtProvider jwtProvider;
+
     private NotificationSettingResponse mockResponse;
+
+    // principal 자리에 userId(42L)를 넣어 @AuthenticationPrincipal Long userId 와 연결
+    private final UsernamePasswordAuthenticationToken mockAuth =
+            new UsernamePasswordAuthenticationToken(42L, null, Collections.emptyList());
 
     @BeforeEach
     void setUp() {
@@ -63,11 +74,10 @@ class NotificationSettingControllerTest {
         @Test
         @DisplayName("유효한 토큰이면 알림 설정을 반환한다 (200)")
         void success() throws Exception {
-            // jwt().jwt(b -> b.claim("id", 42)) — 컨트롤러의 extractUserId(jwt)가 42L을 반환
             given(notificationSettingService.getSetting(42L)).willReturn(mockResponse);
 
             mockMvc.perform(get("/api/v1/notifications/settings")
-                            .with(jwt().jwt(b -> b.claim("id", 42))))
+                            .with(authentication(mockAuth)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUCCESS"))
                     .andExpect(jsonPath("$.data.userId").value(42))
@@ -91,7 +101,7 @@ class NotificationSettingControllerTest {
                     .willThrow(new AppException(ErrorCode.USER_NOT_FOUND));
 
             mockMvc.perform(get("/api/v1/notifications/settings")
-                            .with(jwt().jwt(b -> b.claim("id", 42))))
+                            .with(authentication(mockAuth)))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
         }
@@ -121,7 +131,7 @@ class NotificationSettingControllerTest {
             );
 
             mockMvc.perform(patch("/api/v1/notifications/settings")
-                            .with(jwt().jwt(b -> b.claim("id", 42)))
+                            .with(authentication(mockAuth))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isOk())
@@ -150,17 +160,16 @@ class NotificationSettingControllerTest {
                     .id(1L)
                     .userId(42L)
                     .pushEnabled(false)
-                    .chatEnabled(true)  // 변경 안 함
+                    .chatEnabled(true)
                     .studyEnabled(false)
                     .build();
 
             given(notificationSettingService.updateSetting(eq(42L), any())).willReturn(partialResponse);
 
-            // pushEnabled만 전달
             Map<String, Object> body = Map.of("pushEnabled", false);
 
             mockMvc.perform(patch("/api/v1/notifications/settings")
-                            .with(jwt().jwt(b -> b.claim("id", 42)))
+                            .with(authentication(mockAuth))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isOk())

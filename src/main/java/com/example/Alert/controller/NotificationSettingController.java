@@ -7,10 +7,7 @@ import com.example.Alert.service.NotificationSettingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-
-
 
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -20,22 +17,17 @@ public class NotificationSettingController {
 
     @GetMapping("/settings")
     public ResponseEntity<ApiResponse<NotificationSettingResponse>> getSettings(
-            @AuthenticationPrincipal Jwt jwt) {
-        Long userId = extractUserId(jwt);
+            // JwtAuthenticationFilter가 SecurityContext에 저장한 userId(Long)를 꺼냄
+            @AuthenticationPrincipal Long userId) {
         NotificationSettingResponse response = notificationSettingService.getSetting(userId);
         return ResponseEntity.ok(ApiResponse.success(response, "알림 설정을 성공적으로 가져왔습니다."));
     }
 
     @PatchMapping("/settings")
     public ResponseEntity<ApiResponse<NotificationSettingResponse>> updateSettings(
-            @AuthenticationPrincipal Jwt jwt,
+            @AuthenticationPrincipal Long userId,
             @RequestBody UpdateNotificationSettingRequest request) {
-        Long userId = extractUserId(jwt);
         NotificationSettingResponse response = notificationSettingService.updateSetting(userId, request);
         return ResponseEntity.ok(ApiResponse.success(response, "알림 설정이 수정되었습니다."));
-    }
-
-    private Long extractUserId(Jwt jwt) {
-        return ((Number) jwt.getClaim("id")).longValue();
     }
 }

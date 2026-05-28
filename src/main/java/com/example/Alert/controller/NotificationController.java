@@ -7,7 +7,6 @@ import com.example.Alert.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 
@@ -20,7 +19,7 @@ public class NotificationController {
     // post 메서드
     @PostMapping("/user")
     public ResponseEntity<ApiResponse<NotificationResponse>> createNotification(
-            @AuthenticationPrincipal Jwt jwt,
+            @AuthenticationPrincipal Long userId,
             @RequestBody CreateNotificationRequest request) {
         NotificationResponse response = notificationService.createUserNotification(request);
 
