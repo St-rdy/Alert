@@ -3,10 +3,18 @@ package com.example.Alert.service;
 import com.example.Alert.common.exception.AppException;
 import com.example.Alert.common.exception.ErrorCode;
 import com.example.Alert.dto.request.CreateNotificationRequest;
+import com.example.Alert.dto.response.NotificationListResponse;
 import com.example.Alert.dto.response.NotificationResponse;
+import com.example.Alert.dto.response.PaginationResponse;
 import com.example.Alert.entity.Notification;
+import com.example.Alert.entity.QNotification;
 import com.example.Alert.repository.NotificationRepository;
+import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,5 +52,38 @@ public class NotificationService {
 
         // 응답결과를 직접 반환하지 않고 DTO로 반환해 return
         return NotificationResponse.from(saved);
+    }
+
+    public NotificationListResponse getNotifications(Long userId, String type, Boolean isRead, int page, int limit) {
+
+        // 동적 조건
+        // BooleanBuilder를 통해 and로 조건을 하나씩 붙임
+        BooleanBuilder predicate = new BooleanBuilder();
+        predicate.and(QNotification.notification.userId.eq(userId));
+        if (type != null) predicate.and(QNotification.notification.type.eq(type));
+        if (isRead != null) predicate.and(QNotification.notification.read.eq(isRead));
+        // 페이징 설정
+        Pageable pageable = PageRequest.of(page - 1, limit, Sort.by("createdAt").descending());
+
+        // 조건 + 페이징으로 DB를 조회
+        Page<Notification> result = notificationRepository.findAll(predicate, pageable);
+
+        // 안읽은 알림 수 카운트
+        long unreadCount = notificationRepository.count(
+                QNotification.notification.userId.eq(userId).and(QNotification.notification.read.eq(false))
+        );
+
+        return NotificationListResponse.builder()
+                .unreadCount(unreadCount)
+                .pagination(PaginationResponse.builder()
+                        .page(page)
+                        .limit(limit)
+                        .total(result.getTotalElements())
+                        .build())
+                .notifications(result.getContent().stream()
+                        .map(NotificationResponse::from)
+                        .toList())
+                .build();
+
     }
 }
