@@ -50,4 +50,9 @@ public class Notification {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    // 읽었을 때 변형할 메서드
+    public void markAsRead() {
+        this.read = true;
+    }
 }

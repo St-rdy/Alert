@@ -4,6 +4,7 @@ import com.example.Alert.common.exception.AppException;
 import com.example.Alert.common.exception.ErrorCode;
 import com.example.Alert.dto.request.CreateNotificationRequest;
 import com.example.Alert.dto.response.NotificationListResponse;
+import com.example.Alert.dto.response.NotificationReadResponse;
 import com.example.Alert.dto.response.NotificationResponse;
 import com.example.Alert.dto.response.PaginationResponse;
 import com.example.Alert.entity.Notification;
@@ -86,4 +87,15 @@ public class NotificationService {
                 .build();
 
     }
+
+    // 알림 읽음 처리
+    public NotificationReadResponse markAsRead(Long userId, Long notificationId) {
+        Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
+
+        notification.markAsRead();
+
+        return NotificationReadResponse.from(notificationRepository.save(notification));
+    }
+
 }
