@@ -1,6 +1,7 @@
 package com.example.Alert.dto.response;
 
 import com.example.Alert.entity.Notification;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -14,8 +15,10 @@ public class NotificationResponse {
     private String type;
     private String title;
     private String body;
+    @JsonProperty("is_read")
     private boolean read;
     private String url;
+    @JsonProperty("created_at")
     private LocalDateTime createdAt;
 
     // 응답 결과에 대한 DTO

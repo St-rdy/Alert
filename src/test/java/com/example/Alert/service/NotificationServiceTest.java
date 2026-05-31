@@ -2,9 +2,11 @@ package com.example.Alert.service;
 
 import com.example.Alert.common.exception.AppException;
 import com.example.Alert.dto.request.CreateNotificationRequest;
+import com.example.Alert.dto.response.NotificationListResponse;
 import com.example.Alert.dto.response.NotificationResponse;
 import com.example.Alert.entity.Notification;
 import com.example.Alert.repository.NotificationRepository;
+import com.querydsl.core.types.Predicate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,8 +15,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -113,6 +119,41 @@ class NotificationServiceTest {
                     .isInstanceOf(AppException.class)
                     .extracting("code")
                     .isEqualTo("INVALID_TYPE");
+        }
+    }
+
+    @Nested
+    @DisplayName("getNotifications")
+    class GetNotifications {
+
+        @Test
+        @DisplayName("필터 없이 조회하면 전체 알림 목록을 반환한다")
+        void success() {
+            Page<Notification> mockPage = new PageImpl<>(List.of(mockNotification));
+            given(notificationRepository.findAll(any(Predicate.class), any(Pageable.class))).willReturn(mockPage);
+            given(notificationRepository.count(any(Predicate.class))).willReturn(1L);
+
+            NotificationListResponse result = notificationService.getNotifications(42L, null, null, 1, 20);
+
+            assertThat(result.getUnreadCount()).isEqualTo(1L);
+            assertThat(result.getPagination().getPage()).isEqualTo(1);
+            assertThat(result.getPagination().getTotal()).isEqualTo(1L);
+            assertThat(result.getNotifications()).hasSize(1);
+            assertThat(result.getNotifications().get(0).getType()).isEqualTo("chat");
+        }
+
+        @Test
+        @DisplayName("알림이 없으면 빈 목록을 반환한다")
+        void empty() {
+            Page<Notification> emptyPage = new PageImpl<>(List.of());
+            given(notificationRepository.findAll(any(Predicate.class), any(Pageable.class))).willReturn(emptyPage);
+            given(notificationRepository.count(any(Predicate.class))).willReturn(0L);
+
+            NotificationListResponse result = notificationService.getNotifications(42L, null, null, 1, 20);
+
+            assertThat(result.getNotifications()).isEmpty();
+            assertThat(result.getUnreadCount()).isZero();
+            assertThat(result.getPagination().getTotal()).isZero();
         }
     }
 }

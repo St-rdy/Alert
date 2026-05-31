@@ -99,7 +99,7 @@ class NotificationControllerTest {
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.code").value("SUCCESS"))
                     .andExpect(jsonPath("$.data.targetUserId").value(42))
-                    .andExpect(jsonPath("$.data.read").value(false));
+                    .andExpect(jsonPath("$.data.is_read").value(false));
         }
 
         @Test
@@ -181,11 +181,11 @@ class NotificationControllerTest {
                             .with(authentication(mockAuth)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.code").value("SUCCESS"))
-                    .andExpect(jsonPath("$.data.unreadCount").value(1))
+                    .andExpect(jsonPath("$.data.unread_count").value(1))
                     .andExpect(jsonPath("$.data.pagination.page").value(1))
                     .andExpect(jsonPath("$.data.pagination.total").value(1))
                     .andExpect(jsonPath("$.data.notifications[0].type").value("chat"))
-                    .andExpect(jsonPath("$.data.notifications[0].read").value(false));
+                    .andExpect(jsonPath("$.data.notifications[0].is_read").value(false));
         }
 
         @Test
