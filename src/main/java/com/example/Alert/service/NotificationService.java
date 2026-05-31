@@ -3,10 +3,7 @@ package com.example.Alert.service;
 import com.example.Alert.common.exception.AppException;
 import com.example.Alert.common.exception.ErrorCode;
 import com.example.Alert.dto.request.CreateNotificationRequest;
-import com.example.Alert.dto.response.NotificationListResponse;
-import com.example.Alert.dto.response.NotificationReadResponse;
-import com.example.Alert.dto.response.NotificationResponse;
-import com.example.Alert.dto.response.PaginationResponse;
+import com.example.Alert.dto.response.*;
 import com.example.Alert.entity.Notification;
 import com.example.Alert.entity.QNotification;
 import com.example.Alert.repository.NotificationRepository;
@@ -96,6 +93,16 @@ public class NotificationService {
         notification.markAsRead();
 
         return NotificationReadResponse.from(notificationRepository.save(notification));
+    }
+
+    // 전체 알림 읽음 처리
+    @Transactional
+    public NotificationReadAllResponse markAsAllRead(Long userId) {
+        int updatedCount = notificationRepository.markAllAsReadByUserId(userId);
+
+        return NotificationReadAllResponse.builder()
+                .updatedCount(updatedCount)
+                .build();
     }
 
 }

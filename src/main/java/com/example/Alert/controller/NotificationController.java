@@ -3,10 +3,12 @@ package com.example.Alert.controller;
 import com.example.Alert.common.response.ApiResponse;
 import com.example.Alert.dto.request.CreateNotificationRequest;
 import com.example.Alert.dto.response.NotificationListResponse;
+import com.example.Alert.dto.response.NotificationReadAllResponse;
 import com.example.Alert.dto.response.NotificationReadResponse;
 import com.example.Alert.dto.response.NotificationResponse;
 import com.example.Alert.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.apache.coyote.Response;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -52,5 +54,14 @@ public class NotificationController {
         NotificationReadResponse response = notificationService.markAsRead(userId, id);
 
         return ResponseEntity.ok(ApiResponse.success(response, "알림을 읽음 처리했습니다."));
+    }
+
+    @PatchMapping("/read-all")
+    public ResponseEntity<ApiResponse<NotificationReadAllResponse>> markAsReadAll(
+            @AuthenticationPrincipal Long userId
+    ) {
+        NotificationReadAllResponse response = notificationService.markAsAllRead(userId);
+
+        return ResponseEntity.ok(ApiResponse.success(response, "모든 알림을 읽음 처리했습니다."));
     }
 }

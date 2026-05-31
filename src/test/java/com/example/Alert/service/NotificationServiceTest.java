@@ -3,6 +3,7 @@ package com.example.Alert.service;
 import com.example.Alert.common.exception.AppException;
 import com.example.Alert.dto.request.CreateNotificationRequest;
 import com.example.Alert.dto.response.NotificationListResponse;
+import com.example.Alert.dto.response.NotificationReadAllResponse;
 import com.example.Alert.dto.response.NotificationReadResponse;
 import com.example.Alert.dto.response.NotificationResponse;
 import com.example.Alert.entity.Notification;
@@ -156,6 +157,31 @@ class NotificationServiceTest {
             assertThat(result.getNotifications()).isEmpty();
             assertThat(result.getUnreadCount()).isZero();
             assertThat(result.getPagination().getTotal()).isZero();
+        }
+    }
+
+    @Nested
+    @DisplayName("markAsAllRead")
+    class MarkAllAsRead {
+
+        @Test
+        @DisplayName("읽지 않은 알림이 있으면 업데이트된 수를 반환한다")
+        void success() {
+            given(notificationRepository.markAllAsReadByUserId(42L)).willReturn(3);
+
+            NotificationReadAllResponse result = notificationService.markAsAllRead(42L);
+
+            assertThat(result.getUpdatedCount()).isEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("읽지 않은 알림이 없으면 0을 반환한다")
+        void noUnread() {
+            given(notificationRepository.markAllAsReadByUserId(42L)).willReturn(0);
+
+            NotificationReadAllResponse result = notificationService.markAsAllRead(42L);
+
+            assertThat(result.getUpdatedCount()).isZero();
         }
     }
 
