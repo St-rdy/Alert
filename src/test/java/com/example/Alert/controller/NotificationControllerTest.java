@@ -2,7 +2,11 @@ package com.example.Alert.controller;
 
 import com.example.Alert.common.exception.AppException;
 import com.example.Alert.common.exception.ErrorCode;
+import com.example.Alert.dto.response.NotificationListResponse;
 import com.example.Alert.dto.response.NotificationResponse;
+import com.example.Alert.dto.response.PaginationResponse;
+import com.example.Alert.security.JwtAuthenticationFilter;
+import com.example.Alert.security.JwtProvider;
 import com.example.Alert.security.SecurityConfig;
 import com.example.Alert.service.NotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,27 +16,29 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-
-// @TestPropertySource: SecurityConfig의 @Value("${jwt.secret}") 주입을 위해 필요
+// JwtAuthenticationFilter를 @Import로 직접 포함 — 실제 필터가 동작해야 401이 정상 동작함
+// JwtProvider만 mock — 실제 jwt.secret 없이도 필터가 생성되고, 헤더 없는 요청은 인증 없이 통과
 @WebMvcTest(NotificationController.class)
-@Import(SecurityConfig.class)
-@TestPropertySource(properties = "jwt.secret=test-secret-key-must-be-32-chars!!")
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
 class NotificationControllerTest {
 
     @Autowired
@@ -44,7 +50,16 @@ class NotificationControllerTest {
     @MockitoBean
     private NotificationService notificationService;
 
+    // JwtProvider만 mock: jwt.secret 주입 없이도 컨텍스트 로드 가능
+    // 실제 필터(JwtAuthenticationFilter)는 그대로 동작하므로 필터 체인이 정상 실행됨
+    @MockitoBean
+    private JwtProvider jwtProvider;
+
     private NotificationResponse mockResponse;
+
+    // principal 자리에 userId(42L)를 넣어 @AuthenticationPrincipal Long userId 와 연결
+    private final UsernamePasswordAuthenticationToken mockAuth =
+            new UsernamePasswordAuthenticationToken(42L, null, Collections.emptyList());
 
     @BeforeEach
     void setUp() {
@@ -78,13 +93,13 @@ class NotificationControllerTest {
             );
 
             mockMvc.perform(post("/api/v1/notifications/user")
-                            .with(jwt().jwt(b -> b.claim("id", 1)))
+                            .with(authentication(mockAuth))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.code").value("SUCCESS"))
                     .andExpect(jsonPath("$.data.targetUserId").value(42))
-                    .andExpect(jsonPath("$.data.read").value(false));
+                    .andExpect(jsonPath("$.data.is_read").value(false));
         }
 
         @Test
@@ -97,7 +112,7 @@ class NotificationControllerTest {
                     "body", "허태범님이 메시지를 보냈습니다."
             );
 
-            // .with(jwt()) 없이 요청 — SecurityConfig의 authenticationEntryPoint가 401 반환
+            // authentication() 없이 요청 — SecurityContext 비어 있음 → 401
             mockMvc.perform(post("/api/v1/notifications/user")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
@@ -108,18 +123,17 @@ class NotificationControllerTest {
         @Test
         @DisplayName("필수 필드가 없으면 MISSING_FIELDS를 반환한다 (400)")
         void missingFields() throws Exception {
-            // 서비스가 MISSING_FIELDS 예외를 던지면 GlobalExceptionHandler가 400으로 처리
             given(notificationService.createUserNotification(any()))
                     .willThrow(new AppException(ErrorCode.MISSING_FIELDS));
 
-            Map<String, Object> body = Map.of( // targetUserId 누락
+            Map<String, Object> body = Map.of(
                     "type", "chat",
                     "title", "새 메시지가 도착했어요",
                     "body", "허태범님이 메시지를 보냈습니다."
             );
 
             mockMvc.perform(post("/api/v1/notifications/user")
-                            .with(jwt().jwt(b -> b.claim("id", 1)))
+                            .with(authentication(mockAuth))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isBadRequest())
@@ -140,11 +154,64 @@ class NotificationControllerTest {
             );
 
             mockMvc.perform(post("/api/v1/notifications/user")
-                            .with(jwt().jwt(b -> b.claim("id", 1)))
+                            .with(authentication(mockAuth))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(body)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("INVALID_TYPE"));
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/notifications")
+    class GetNotifications {
+
+        @Test
+        @DisplayName("알림 목록을 반환한다 (200)")
+        void success() throws Exception {
+            NotificationListResponse mockList = NotificationListResponse.builder()
+                    .unreadCount(1L)
+                    .pagination(PaginationResponse.builder().page(1).limit(20).total(1L).build())
+                    .notifications(List.of(mockResponse))
+                    .build();
+
+            given(notificationService.getNotifications(42L, null, null, 1, 20)).willReturn(mockList);
+
+            mockMvc.perform(get("/api/v1/notifications")
+                            .with(authentication(mockAuth)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.unread_count").value(1))
+                    .andExpect(jsonPath("$.data.pagination.page").value(1))
+                    .andExpect(jsonPath("$.data.pagination.total").value(1))
+                    .andExpect(jsonPath("$.data.notifications[0].type").value("chat"))
+                    .andExpect(jsonPath("$.data.notifications[0].is_read").value(false));
+        }
+
+        @Test
+        @DisplayName("type 필터로 조회한다 (200)")
+        void filterByType() throws Exception {
+            NotificationListResponse mockList = NotificationListResponse.builder()
+                    .unreadCount(1L)
+                    .pagination(PaginationResponse.builder().page(1).limit(20).total(1L).build())
+                    .notifications(List.of(mockResponse))
+                    .build();
+
+            given(notificationService.getNotifications(42L, "chat", null, 1, 20)).willReturn(mockList);
+
+            mockMvc.perform(get("/api/v1/notifications")
+                            .param("type", "chat")
+                            .with(authentication(mockAuth)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.notifications[0].type").value("chat"));
+        }
+
+        @Test
+        @DisplayName("토큰이 없으면 UNAUTHORIZED를 반환한다 (401)")
+        void noToken() throws Exception {
+            mockMvc.perform(get("/api/v1/notifications"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
         }
     }
 }
