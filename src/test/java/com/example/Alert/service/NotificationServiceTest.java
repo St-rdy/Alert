@@ -8,6 +8,7 @@ import com.example.Alert.dto.response.NotificationReadResponse;
 import com.example.Alert.dto.response.NotificationResponse;
 import com.example.Alert.entity.Notification;
 import com.example.Alert.repository.NotificationRepository;
+import com.example.Alert.repository.SseEmitterRepository;
 import com.querydsl.core.types.Predicate;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,9 @@ class NotificationServiceTest {
 
     @Mock
     private NotificationRepository notificationRepository;
+
+    @Mock
+    private SseEmitterRepository sseEmitterRepository;
 
     private Notification mockNotification;
 
