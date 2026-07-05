@@ -27,7 +27,13 @@ public class SecurityConfig {
                 // JWT 기반 인증은 서버에 세션을 저장하지 않음
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
+                        .anyRequest().authenticated())
                 // Spring의 기본 UsernamePasswordAuthenticationFilter 앞에 JWT 필터 삽입
                 // 이 위치에 넣어야 JWT 인증이 Spring Security 기본 처리보다 먼저 실행됨
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
