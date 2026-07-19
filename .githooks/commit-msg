@@ -1,0 +1,8 @@
+#!/bin/sh
+commit_msg=$(cat "$1")
+if ! echo "$commit_msg" | grep -qE '^\[BACKEND-[0-9]+\]'; then
+  echo "[commit-msg] Commit message must start with [BACKEND-XX]"
+  echo "[commit-msg] Example: [BACKEND-57] 기능 설명"
+  echo "[commit-msg] Your message: $commit_msg"
+  exit 1
+fi
