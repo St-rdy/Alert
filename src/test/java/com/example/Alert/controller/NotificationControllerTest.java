@@ -3,6 +3,8 @@ package com.example.Alert.controller;
 import com.example.Alert.common.exception.AppException;
 import com.example.Alert.common.exception.ErrorCode;
 import com.example.Alert.dto.response.NotificationListResponse;
+import com.example.Alert.dto.response.NotificationReadAllResponse;
+import com.example.Alert.dto.response.NotificationReadResponse;
 import com.example.Alert.dto.response.NotificationResponse;
 import com.example.Alert.dto.response.PaginationResponse;
 import com.example.Alert.security.JwtAuthenticationFilter;
@@ -31,6 +33,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -210,6 +213,93 @@ class NotificationControllerTest {
         @DisplayName("토큰이 없으면 UNAUTHORIZED를 반환한다 (401)")
         void noToken() throws Exception {
             mockMvc.perform(get("/api/v1/notifications"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+        }
+    }
+
+    @Nested
+    @DisplayName("PATCH /api/v1/notifications/read-all")
+    class MarkAllAsRead {
+
+        @Test
+        @DisplayName("전체 알림을 읽음 처리한다 (200)")
+        void success() throws Exception {
+            NotificationReadAllResponse mockReadAllResponse = NotificationReadAllResponse.builder()
+                    .updatedCount(3)
+                    .build();
+
+            given(notificationService.markAsAllRead(42L)).willReturn(mockReadAllResponse);
+
+            mockMvc.perform(patch("/api/v1/notifications/read-all")
+                            .with(authentication(mockAuth)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.updated_count").value(3));
+        }
+
+        @Test
+        @DisplayName("읽지 않은 알림이 없으면 0을 반환한다 (200)")
+        void noUnread() throws Exception {
+            NotificationReadAllResponse mockReadAllResponse = NotificationReadAllResponse.builder()
+                    .updatedCount(0)
+                    .build();
+
+            given(notificationService.markAsAllRead(42L)).willReturn(mockReadAllResponse);
+
+            mockMvc.perform(patch("/api/v1/notifications/read-all")
+                            .with(authentication(mockAuth)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.updated_count").value(0));
+        }
+
+        @Test
+        @DisplayName("토큰이 없으면 UNAUTHORIZED를 반환한다 (401)")
+        void noToken() throws Exception {
+            mockMvc.perform(patch("/api/v1/notifications/read-all"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+        }
+    }
+
+    @Nested
+    @DisplayName("PATCH /api/v1/notifications/{id}/read")
+    class MarkAsRead {
+
+        @Test
+        @DisplayName("알림을 읽음 처리한다 (200)")
+        void success() throws Exception {
+            NotificationReadResponse mockReadResponse = NotificationReadResponse.builder()
+                    .id(1L)
+                    .read(true)
+                    .build();
+
+            given(notificationService.markAsRead(42L, 1L)).willReturn(mockReadResponse);
+
+            mockMvc.perform(patch("/api/v1/notifications/1/read")
+                            .with(authentication(mockAuth)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value("SUCCESS"))
+                    .andExpect(jsonPath("$.data.id").value(1))
+                    .andExpect(jsonPath("$.data.is_read").value(true));
+        }
+
+        @Test
+        @DisplayName("존재하지 않는 알림이면 NOT_FOUND를 반환한다 (404)")
+        void notFound() throws Exception {
+            given(notificationService.markAsRead(42L, 999L))
+                    .willThrow(new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
+
+            mockMvc.perform(patch("/api/v1/notifications/999/read")
+                            .with(authentication(mockAuth)))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+        }
+
+        @Test
+        @DisplayName("토큰이 없으면 UNAUTHORIZED를 반환한다 (401)")
+        void noToken() throws Exception {
+            mockMvc.perform(patch("/api/v1/notifications/1/read"))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
         }

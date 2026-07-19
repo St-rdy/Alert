@@ -3,12 +3,11 @@ package com.example.Alert.service;
 import com.example.Alert.common.exception.AppException;
 import com.example.Alert.common.exception.ErrorCode;
 import com.example.Alert.dto.request.CreateNotificationRequest;
-import com.example.Alert.dto.response.NotificationListResponse;
-import com.example.Alert.dto.response.NotificationResponse;
-import com.example.Alert.dto.response.PaginationResponse;
+import com.example.Alert.dto.response.*;
 import com.example.Alert.entity.Notification;
 import com.example.Alert.entity.QNotification;
 import com.example.Alert.repository.NotificationRepository;
+import com.example.Alert.repository.SseEmitterRepository;
 import com.querydsl.core.BooleanBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -17,12 +16,17 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.Set;
 
 @Service
 @RequiredArgsConstructor // final 필드를 주입받는 생성자를 자동으로 생성
 public class NotificationService {
+
+    private final SseEmitterRepository sseEmitterRepository;
+
     private static final Set<String> VALID_TYPES = Set.of("chat", "study", "system");
 
     private final NotificationRepository notificationRepository;
@@ -49,6 +53,15 @@ public class NotificationService {
                 .build();
 
         Notification saved = notificationRepository.save(notification);
+
+        sseEmitterRepository.findByUserId(request.getTargetUserId())
+                .ifPresent(emitter -> {
+                    try {
+                        emitter.send(SseEmitter.event().name("notification").data(NotificationResponse.from(saved)));
+                    } catch (IOException e) {
+                        sseEmitterRepository.deleteByUserId(request.getTargetUserId());
+                    }
+                });
 
         // 응답결과를 직접 반환하지 않고 DTO로 반환해 return
         return NotificationResponse.from(saved);
@@ -86,4 +99,44 @@ public class NotificationService {
                 .build();
 
     }
+
+    // 알림 읽음 처리
+    public NotificationReadResponse markAsRead(Long userId, Long notificationId) {
+        Notification notification = notificationRepository.findByIdAndUserId(notificationId, userId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
+
+        notification.markAsRead();
+
+        return NotificationReadResponse.from(notificationRepository.save(notification));
+    }
+
+    // 전체 알림 읽음 처리
+    @Transactional
+    public NotificationReadAllResponse markAsAllRead(Long userId) {
+        int updatedCount = notificationRepository.markAllAsReadByUserId(userId);
+
+        return NotificationReadAllResponse.builder()
+                .updatedCount(updatedCount)
+                .build();
+    }
+
+    public SseEmitter subscribe(Long userId) {
+        SseEmitter emitter = new SseEmitter(60 * 60 * 1000L); // 1시간 타임 아웃
+
+        sseEmitterRepository.save(userId, emitter);
+
+        // 연결 종료, 타임아웃, 에러 시 emitter 제거
+        emitter.onCompletion(() -> sseEmitterRepository.deleteByUserId(userId));
+        emitter.onTimeout(() -> sseEmitterRepository.deleteByUserId(userId));
+        emitter.onError(e -> sseEmitterRepository.deleteByUserId(userId));
+
+        try {
+            emitter.send(SseEmitter.event().name("connect").data("connected"));
+        } catch (IOException e) {
+            sseEmitterRepository.deleteByUserId(userId);
+        }
+
+        return emitter;
+    }
+
 }
